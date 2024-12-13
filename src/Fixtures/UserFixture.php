@@ -44,11 +44,19 @@ class UserFixture extends Fixture implements DependentFixtureInterface
     {
         $faker = Factory::create('fr_FR');
 
-        foreach (self::USER_ARRAY as ['ref' => $ref]) {
+        foreach (self::USER_ARRAY as $index => ['ref' => $ref]) {
             $user = new User();
             $date = $faker->dateTime();
 
+            $role = ['ROLE_USER'];
+            if ($index === 0) {
+                $role = ['ROLE_ADMIN'];
+            }
+
             $user->setFirstname($faker->firstName())
+            ->setEmail($faker->email())
+            ->setRoles($role)
+            ->setPassword($faker->password())
             ->setLastname($faker->lastName())
             ->setClient($this->getReference($ref, Client::class))
             ->setCreatedAt(\DateTimeImmutable::createFromMutable($date))
