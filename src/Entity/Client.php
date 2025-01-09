@@ -65,7 +65,7 @@ class Client implements UserInterface, PasswordAuthenticatedUserInterface
      */
     public function getRoles(): array
     {
-        return ['ROLE_USER'];
+        return ['ROLE_CLIENT'];
     }
 
     /**
