@@ -17,27 +17,27 @@ class UserFixture extends Fixture implements DependentFixtureInterface
         ['ref' => 'SFR'],
         ['ref' => 'Orange'],
         ['ref' => 'Orange'],
-        ['ref' => 'NRJPhone'],
-        ['ref' => 'NRJPhone'],
-        ['ref' => 'NRJPhone'],
-        ['ref' => 'NRJPhone'],
-        ['ref' => 'Mobile2000'],
-        ['ref' => 'Mobile2000'],
-        ['ref' => 'Mobile2000'],
-        ['ref' => 'Vodafone'],
-        ['ref' => 'Vodafone'],
-        ['ref' => 'Vodafone'],
-        ['ref' => 'Free'],
-        ['ref' => 'Free'],
-        ['ref' => 'Free'],
-        ['ref' => 'LapostMobile'],
-        ['ref' => 'LapostMobile'],
-        ['ref' => 'LapostMobile'],
-        ['ref' => 'LapostMobile'],
-        ['ref' => 'LapostMobile'],
-        ['ref' => 'LapostMobile'],
-        ['ref' => 'GeniusMobile'],
-        ['ref' => 'GeniusMobile'],
+        // ['ref' => 'NRJPhone'],
+        // ['ref' => 'NRJPhone'],
+        // ['ref' => 'NRJPhone'],
+        // ['ref' => 'NRJPhone'],
+        // ['ref' => 'Mobile2000'],
+        // ['ref' => 'Mobile2000'],
+        // ['ref' => 'Mobile2000'],
+        // ['ref' => 'Vodafone'],
+        // ['ref' => 'Vodafone'],
+        // ['ref' => 'Vodafone'],
+        // ['ref' => 'Free'],
+        // ['ref' => 'Free'],
+        // ['ref' => 'Free'],
+        // ['ref' => 'LapostMobile'],
+        // ['ref' => 'LapostMobile'],
+        // ['ref' => 'LapostMobile'],
+        // ['ref' => 'LapostMobile'],
+        // ['ref' => 'LapostMobile'],
+        // ['ref' => 'LapostMobile'],
+        // ['ref' => 'GeniusMobile'],
+        // ['ref' => 'GeniusMobile'],
     ];
 
     public function load(ObjectManager $manager): void
@@ -48,15 +48,13 @@ class UserFixture extends Fixture implements DependentFixtureInterface
             $user = new User();
             $date = $faker->dateTime();
 
-            $role = ['ROLE_USER'];
-            if ($index === 0) {
-                $role = ['ROLE_ADMIN'];
-            }
+            // $role = ['ROLE_USER'];
+            // if ($index === 0) {
+            //     $role = ['ROLE_ADMIN'];
+            // }
 
             $user->setFirstname($faker->firstName())
             ->setEmail($faker->email())
-            ->setRoles($role)
-            ->setPassword($faker->password())
             ->setLastname($faker->lastName())
             ->setClient($this->getReference($ref, Client::class))
             ->setCreatedAt(\DateTimeImmutable::createFromMutable($date))
