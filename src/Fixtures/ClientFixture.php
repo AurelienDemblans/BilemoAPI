@@ -42,6 +42,7 @@ class ClientFixture extends Fixture
             $client->setName($name)
                 ->setCreatedAt(\DateTimeImmutable::createFromMutable($date))
                 ->setUsername($username)
+                ->setRoles(['ROLE_CLIENT'])
                 ->setPassword($this->hasher->hashPassword($client, $password))
             ;
 
