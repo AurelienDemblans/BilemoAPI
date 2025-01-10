@@ -8,6 +8,7 @@ use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface;
 use Symfony\Component\Security\Core\User\UserInterface;
+use Symfony\Component\Serializer\Annotation\Groups;
 use Symfony\Component\Validator\Constraints as Assert;
 
 #[ORM\Entity(repositoryClass: ClientRepository::class)]
@@ -17,9 +18,11 @@ class Client implements UserInterface, PasswordAuthenticatedUserInterface
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
+    #[Groups(["getUser"])]
     private ?int $id = null;
 
     #[ORM\Column(length: 255)]
+    #[Groups(["getUser"])]
     private ?string $name = null;
 
     #[ORM\Column(length: 255)]
@@ -45,6 +48,7 @@ class Client implements UserInterface, PasswordAuthenticatedUserInterface
     private ?string $refreshToken = null;
 
     #[ORM\Column]
+    #[Groups(["getUser"])]
     private ?\DateTimeImmutable $createdAt = null;
 
     /**
