@@ -16,8 +16,8 @@ class ClientFixture extends Fixture
     }
 
     public const CLIENT_ARRAY = [
-        ['name' => 'SFR', 'ref' => 'SFR', 'username' => 'sfr','password' => 'testSFR'],
-        ['name' => 'Orange', 'ref' => 'Orange', 'username' => 'orange','password' => 'testORANGE'],
+        ['name' => 'SFR', 'ref' => 'SFR', 'username' => 'sfr'],
+        ['name' => 'Orange', 'ref' => 'Orange', 'username' => 'orange'],
         // ['name' => 'NRJPhone', 'ref' => 'NRJPhone'],
         // ['name' => 'Mobile2000', 'ref' => 'Mobile2000'],
         // ['name' => 'Vodafone', 'ref' => 'Vodafone'],
@@ -33,8 +33,7 @@ class ClientFixture extends Fixture
         foreach (self::CLIENT_ARRAY as [
             'name' => $name,
             'ref' => $ref,
-            'username' => $username,
-            'password' => $password
+            'username' => $username
         ]) {
             $client = new Client();
             $date = $faker->dateTime();
@@ -42,8 +41,6 @@ class ClientFixture extends Fixture
             $client->setName($name)
                 ->setCreatedAt(\DateTimeImmutable::createFromMutable($date))
                 ->setUsername($username)
-                ->setRoles(['ROLE_CLIENT'])
-                ->setPassword($this->hasher->hashPassword($client, $password))
             ;
 
             $manager->persist($client);

@@ -8,15 +8,20 @@ use Doctrine\Bundle\FixturesBundle\Fixture;
 use Doctrine\Common\DataFixtures\DependentFixtureInterface;
 use Doctrine\Persistence\ObjectManager;
 use Faker\Factory;
+use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 
 class UserFixture extends Fixture implements DependentFixtureInterface
 {
+    public function __construct(private readonly UserPasswordHasherInterface $hasher)
+    {
+    }
+
     public const USER_ARRAY = [
-        ['ref' => 'SFR'],
-        ['ref' => 'SFR'],
-        ['ref' => 'SFR'],
-        ['ref' => 'Orange'],
-        ['ref' => 'Orange'],
+        ['email' => 'client1@test.com', 'ref' => 'SFR','password' => 'client1'],
+        ['email' => 'client2@test.com', 'ref' => 'SFR','password' => 'client2'],
+        ['email' => 'client3@test.com', 'ref' => 'SFR','password' => 'client3'],
+        ['email' => 'client4@test.com', 'ref' => 'Orange','password' => 'client4'],
+        ['email' => 'client5@test.com', 'ref' => 'Orange','password' => 'client5'],
         // ['ref' => 'NRJPhone'],
         // ['ref' => 'NRJPhone'],
         // ['ref' => 'NRJPhone'],
@@ -44,26 +49,34 @@ class UserFixture extends Fixture implements DependentFixtureInterface
     {
         $faker = Factory::create('fr_FR');
 
-        foreach (self::USER_ARRAY as $index => ['ref' => $ref]) {
+        foreach (
+            self::USER_ARRAY as $index =>
+            [
+                'ref' => $ref,
+                'email' => $email,
+                'password' => $password
+            ]
+        ) {
             $user = new User();
             $date = $faker->dateTime();
 
-            // $role = ['ROLE_USER'];
-            // if ($index === 0) {
-            //     $role = ['ROLE_ADMIN'];
-            // }
+            $role = ['ROLE_USER'];
+            if ($index === 0) {
+                $role = ['ROLE_ADMIN'];
+            }
 
             $user->setFirstname($faker->firstName())
-            ->setEmail($faker->email())
-            ->setLastname($faker->lastName())
-            ->setClient($this->getReference($ref, Client::class))
-            ->setCreatedAt(\DateTimeImmutable::createFromMutable($date))
+                ->setEmail($email)
+                ->setLastname($faker->lastName())
+                ->setClient($this->getReference($ref, Client::class))
+                ->setCreatedAt(\DateTimeImmutable::createFromMutable($date))
+                ->setRoles($role)
+                ->setPassword($this->hasher->hashPassword($user, $password))
             ;
 
 
 
             $manager->persist($user);
-
         }
 
         $manager->flush();
