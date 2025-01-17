@@ -15,9 +15,11 @@ class ProductController extends AbstractController
 {
     //TODO
     #[Route('/api/products', name: 'app_products', methods: Request::METHOD_GET) ]
-    public function index(ProductRepository $productRepository, SerializerInterface $serializer): JsonResponse
+    public function index(ProductRepository $productRepository, SerializerInterface $serializer, Request $request): JsonResponse
     {
-        $productList = $productRepository->findAll();
+        $page = $request->get('page', 1);
+        $limit = $request->get('limit', 3);
+        $productList = $productRepository->findAllWithPagination($page, $limit);
 
         $jsonProductList = $serializer->serialize($productList, 'json');
 
@@ -25,7 +27,7 @@ class ProductController extends AbstractController
     }
 
     #[Route('/api/products/{id}', name: 'detail_product', methods: ['GET'])]
-    public function getDetailBook(Product $product, SerializerInterface $serializer): JsonResponse
+    public function getDetailProduct(Product $product, SerializerInterface $serializer): JsonResponse
     {
         $jsonProduct = $serializer->serialize($product, 'json');
         return new JsonResponse($jsonProduct, Response::HTTP_OK, ['accept' => 'json'], true);
