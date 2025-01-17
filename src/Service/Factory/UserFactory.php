@@ -36,7 +36,7 @@ class UserFactory
         if (!empty($existingUser)) {
             throw new Exception('Cette email est déjà utilisé');
         }
-        if (!empty($client)) {
+        if (empty($client)) {
             throw new Exception('Ce client est inconnu');
         }
 

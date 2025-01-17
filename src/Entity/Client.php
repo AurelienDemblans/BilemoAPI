@@ -8,7 +8,7 @@ use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
 
 #[ORM\Entity(repositoryClass: ClientRepository::class)]
-#[ORM\UniqueConstraint(name: 'UNIQ_IDENTIFIER_NAME', fields: ['name'])]
+#[ORM\UniqueConstraint(name: 'UNIQ_IDENTIFIER_NAME', fields: ['username'])]
 class Client
 {
     #[ORM\Id]
@@ -19,11 +19,8 @@ class Client
     #[ORM\Column(length: 255)]
     private ?string $name = null;
 
-    #[ORM\Column(length: 255, nullable: true)]
-    private ?string $token = null;
-
-    #[ORM\Column(length: 255, nullable: true)]
-    private ?string $refreshToken = null;
+    #[ORM\Column(length: 255)]
+    private ?string $username = null;
 
     #[ORM\Column]
     private ?\DateTimeImmutable $createdAt = null;
@@ -37,6 +34,16 @@ class Client
     public function __construct()
     {
         $this->users = new ArrayCollection();
+    }
+
+    /**
+     * Méthode getUsername qui permet de retourner le champ qui est utilisé pour l'authentification.
+     *
+     * @return string
+     */
+    public function getUsername(): string
+    {
+        return $this->username;
     }
 
     public function getId(): ?int
@@ -56,26 +63,9 @@ class Client
         return $this;
     }
 
-    public function getToken(): ?string
+    public function setUsername(string $username): static
     {
-        return $this->token;
-    }
-
-    public function setToken(?string $token): static
-    {
-        $this->token = $token;
-
-        return $this;
-    }
-
-    public function getRefreshToken(): ?string
-    {
-        return $this->refreshToken;
-    }
-
-    public function setRefreshToken(string $refreshToken): static
-    {
-        $this->refreshToken = $refreshToken;
+        $this->username = $username;
 
         return $this;
     }
