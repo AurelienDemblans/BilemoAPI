@@ -6,6 +6,7 @@ use App\Repository\ClientRepository;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
+use Symfony\Component\Serializer\Annotation\Groups;
 
 #[ORM\Entity(repositoryClass: ClientRepository::class)]
 #[ORM\UniqueConstraint(name: 'UNIQ_IDENTIFIER_NAME', fields: ['username'])]
@@ -14,15 +15,19 @@ class Client
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
+    #[Groups(["getUser"])]
     private ?int $id = null;
 
     #[ORM\Column(length: 255)]
+    #[Groups(["getUser"])]
     private ?string $name = null;
 
     #[ORM\Column(length: 255)]
+    #[Groups(["getUser"])]
     private ?string $username = null;
 
     #[ORM\Column]
+    #[Groups(["getUser"])]
     private ?\DateTimeImmutable $createdAt = null;
 
     /**
