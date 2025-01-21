@@ -26,13 +26,8 @@ class ProductController extends AbstractController
         $page = $request->get('page', 1);
         $limit = $request->get('limit', 3);
 
-        $idCache = "getAllProducts-" . $page . "-" . $limit;
-
-        $productList = $cachePool->get($idCache, function (ItemInterface $item) use ($productRepository, $page, $limit) {
-            $item->tag("ProductsCache");
-            $item->expiresAfter(3600);
-            return $productRepository->findAllWithPagination($page, $limit);
-        });
+        //! renvoyer une erreur si productlist est vide et preciser le nombre de page maximum selon la limit choisis par l'utilisateur
+        $productList =  $productRepository->findAllWithPagination($page, $limit);
 
         $jsonProductList = $serializer->serialize($productList, 'json');
 
@@ -42,6 +37,7 @@ class ProductController extends AbstractController
     #[Route('/api/products/{id}', name: 'detail_product', methods: ['GET'])]
     public function getDetailProduct(Product $product): JsonResponse
     {
+        //! créer un event listener dans le cas ou l'ID de product fournis n'existe pas
         return $this->json($product, Response::HTTP_OK, ['accept' => 'json']);
     }
 }
