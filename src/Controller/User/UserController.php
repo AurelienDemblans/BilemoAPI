@@ -119,7 +119,7 @@ class UserController extends AbstractController
         $em->remove($request->getUserToRemove());
         $em->flush();
 
-        return new JsonResponse(['message' => 'User removed.'], Response::HTTP_OK);
+        return new JsonResponse(['message' => 'User removed.'], Response::HTTP_NO_CONTENT);
     }
 
     #[Route('/api/users/add', name: 'add_user', methods: Request::METHOD_POST)]
