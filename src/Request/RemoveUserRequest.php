@@ -38,7 +38,7 @@ class RemoveUserRequest extends AbstractRequest
     }
 
     /**
-     * isValid
+     * isAllowed
      *
      * @return void
      */

@@ -7,6 +7,8 @@ use App\Entity\User;
 use App\Repository\UserRepository;
 use App\Request\RemoveUserRequest;
 use App\Repository\ClientRepository;
+use App\Request\AddUserRequest;
+use DateTimeImmutable;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Contracts\Cache\ItemInterface;
 use Symfony\Component\HttpFoundation\Request;
@@ -120,15 +122,32 @@ class UserController extends AbstractController
         return new JsonResponse(['message' => 'User removed.'], Response::HTTP_OK);
     }
 
-    // #[Route('/api/users/add', name: 'add_user', methods: Request::METHOD_POST)]
-    // #[IsGranted('ROLE_ADMIN')]
-    // public function addUser(Request $request, EntityManagerInterface $em, TagAwareCacheInterface $cachePool): JsonResponse
-    // {
-    //     $cachePool->invalidateTags(["UsersCache"]);
+    #[Route('/api/users/add', name: 'add_user', methods: Request::METHOD_POST)]
+    #[IsGranted('ROLE_ADMIN')]
+    public function addUser(
+        AddUserRequest $request,
+        EntityManagerInterface $em,
+        TagAwareCacheInterface $cachePool
+    ): JsonResponse {
+        $cachePool->invalidateTags(["UsersCache"]);
 
-    //     // $em->remove($user);
-    //     // $em->flush();
+        $request->isValid();
+        $request->isAllowed();
 
-    //     return $this->json(['message' => 'User added with success.'], Response::HTTP_OK);
-    // }
+        $user = new User();
+
+        $user->setClient($request->getClient());
+        $user->setEmail($request->getEmail());
+        $user->setFirstname($request->getFirstName());
+        $user->setLastname($request->getLastName());
+        $user->setRoles(['ROLE_USER']);
+        //!hasher le password
+        $user->setPassword($request->getPassword());
+        $user->setCreatedAt(new DateTimeImmutable());
+
+        $em->persist($user);
+        $em->flush();
+
+        return $this->json(['message' => 'User added with success.'], Response::HTTP_CREATED);
+    }
 }
