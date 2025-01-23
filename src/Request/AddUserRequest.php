@@ -51,7 +51,7 @@ class AddUserRequest extends AbstractRequest
      */
     public function isAllowed()
     {
-        if ($this->getClient() !== $this->getUser()->getClient()) {
+        if ($this->getClient() !== $this->getUser()->getClient() && !$this->userIs('ROLE_SUPER_ADMIN')) {
             throw new Exception('You are not allowed to perform this request : invalid client', Response::HTTP_BAD_REQUEST);
         }
 

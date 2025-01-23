@@ -1,7 +1,8 @@
 <?php
 
-namespace App\Controller;
+namespace App\Controller\Product;
 
+use App\Controller\BilemoController;
 use App\Entity\Product;
 use App\Repository\ProductRepository;
 use Exception;
@@ -14,7 +15,7 @@ use Symfony\Component\Serializer\SerializerInterface;
 use Symfony\Contracts\Cache\ItemInterface;
 use Symfony\Contracts\Cache\TagAwareCacheInterface;
 
-class ProductController extends AbstractController
+class ProductController extends BilemoController
 {
     #[Route('/api/products', name: 'app_products', methods: Request::METHOD_GET) ]
     public function index(
@@ -25,8 +26,10 @@ class ProductController extends AbstractController
     ): JsonResponse {
         $page = $request->get('page', 1);
         $limit = $request->get('limit', 3);
-        if (!is_numeric($page) || $page <= 0 || !is_numeric($limit) || $limit <= 0 || !ctype_digit((string)$limit)) {
-            throw new Exception('Limit and page parameter must be positive integer only', Response::HTTP_BAD_REQUEST);
+        //*check queryParams are valid
+        $queryParams = ['page' => $page, 'limit' => $limit];
+        foreach ($queryParams as $queryParamName => $value) {
+            $this->checkQueryParameter($queryParamName, $value);
         }
 
         $productList =  $productRepository->findAllWithPagination($page, $limit);
