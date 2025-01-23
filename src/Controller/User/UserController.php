@@ -19,6 +19,7 @@ use Symfony\Contracts\Cache\TagAwareCacheInterface;
 use Symfony\Component\Serializer\SerializerInterface;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 
 class UserController extends AbstractController
 {
@@ -26,32 +27,40 @@ class UserController extends AbstractController
         private readonly ClientRepository $clientRepository,
         private readonly SerializerInterface $serializer,
         private readonly TagAwareCacheInterface $cachePool,
+        private readonly UserPasswordHasherInterface $passwordHasher,
     ) {
     }
 
-    #[Route('/api/users/{clientId<\d+>}', name: 'client_users', methods: Request::METHOD_GET) ]
-    #[IsGranted('ROLE_ADMIN')]
+    #[Route('/api/users', name: 'client_users', methods: Request::METHOD_GET) ]
     public function index(
         UserRepository $userRepository,
         SerializerInterface $serializer,
-        int $clientId,
         Request $request,
     ): JsonResponse {
+        //* init variables
+        $page = $request->get('page', 1);
+        $limit = $request->get('limit', 3);
         /** @var User $user */
         $user = $this->getUser();
-        $client = $this->clientRepository->find($clientId);
+        $clientId = $request->get('client', $user->getClient()->getId());
 
-        if ($user->getClient() !== $client) {
+        //*check queryParams are valid
+        $queryParams = ['page' => $page, 'limit' => $limit, 'client' => $clientId];
+        foreach ($queryParams as $queryParamName => $value) {
+            $this->checkQueryParameter($queryParamName, $value);
+        }
+
+        $client = $this->clientRepository->find($clientId);
+        if (!$client) {
+            throw new Exception('Client not found', Response::HTTP_NOT_FOUND);
+        }
+
+        if ($user->getClient() !== $client && !$this->isGranted('ROLE_SUPER_ADMIN')) {
             throw new Exception('You are not allowed to perform this request', Response::HTTP_FORBIDDEN);
         }
 
-        $page = $request->get('page', 1);
-        $limit = $request->get('limit', 3);
+        $idCache = "getAllUsers-" . $page . "-" . $limit. "-".$clientId;
 
-        $idCache = "getAllUsers-" . $page . "-" . $limit;
-
-        //! renvoyer une erreur si userList est vide et preciser le nombre de page maximum
-        //! selon la limit choisis par l'utilisateur
         $jsonUserList = $this->cachePool->get($idCache, function (ItemInterface $item) use (
             $userRepository,
             $page,
@@ -60,44 +69,63 @@ class UserController extends AbstractController
             $serializer,
         ) {
             $item->tag("UsersCache");
-            $item->expiresAfter(3600);
+            $item->expiresAfter(1);
+
+            $totalUser = $userRepository->findBy(['client' => $clientId]);
+            $cleanedTotalNumber = $this->cleanUserListByRole($totalUser);
+            if (null === $cleanedTotalNumber || empty($cleanedTotalNumber)) {
+                throw new Exception('No user available for this client', Response::HTTP_NOT_FOUND);
+            }
+
             $userList = $userRepository->findAllWithPagination($page, $limit, $clientId);
-            return $serializer->serialize($userList, 'json', ['groups' => 'getUser']);
+            $cleanedUserList = $this->cleanUserListByRole($userList);
+
+            if ($cleanedUserList === null || empty($cleanedUserList)) {
+                $numberOfUser = count($cleanedTotalNumber);
+                $maximumUserNumberAvailable = intval(ceil($numberOfUser / $limit));
+
+                throw new Exception('This page contains no users. Maximum number of page with '.$limit.' user(s) by page is : '.$maximumUserNumberAvailable, Response::HTTP_NOT_FOUND);
+            }
+
+            return $serializer->serialize($cleanedUserList, 'json', ['groups' => 'getUser']);
         });
 
         return new JsonResponse($jsonUserList, Response::HTTP_OK, [], true);
     }
 
-    #[Route('/api/clients/{clientId<\d+>}/users/{userId<\d+>}', name: 'client_users_detail', methods: Request::METHOD_GET)]
+    #[Route('/api/users/{userId<\d+>}', name: 'client_users_detail', methods: Request::METHOD_GET)]
     public function getDetailUser(
         UserRepository $userRepository,
         SerializerInterface $serializer,
-        int $clientId,
         int $userId,
     ): JsonResponse {
         /** @var User $user */
         $user = $this->getUser();
-        $client = $this->clientRepository->find($clientId);
+        $client = $user->getClient();
 
-        if ($user->getClient() !== $client) {
+        if ($user->getClient() !== $client && !$this->isGranted('ROLE_SUPER_ADMIN')) {
             throw new Exception('You are not allowed to perform this request', Response::HTTP_FORBIDDEN);
         }
 
-        $idCache = "getDetailUsers-" . $clientId . "-" . $userId;
+        $idCache = "getDetailUsers-". $userId;
 
-        //! renvoyer une erreur si luser nexiste pas
         $jsonUser = $this->cachePool->get($idCache, function (ItemInterface $item) use (
             $userRepository,
             $serializer,
-            $clientId,
-            $userId
+            $userId,
         ) {
             $item->tag("UsersCache");
-            $item->expiresAfter(3600);
-            $userToReturn = $userRepository->findOneBy(['id' => $userId, 'client' => $clientId]);
+            $item->expiresAfter(1);
+            /** @var User $userToReturn */
+            $userToReturn = $userRepository->find($userId);
             if ($userToReturn === null) {
                 throw new Exception('User not found', Response::HTTP_NOT_FOUND);
             }
+
+            if (!$this->validateRoleAuthorization($userToReturn)) {
+                throw new Exception('You are not allowed to perform this request.', Response::HTTP_FORBIDDEN);
+            }
+
             return $serializer->serialize($userToReturn, 'json', ['groups' => 'getUser']);
         });
 
@@ -141,13 +169,48 @@ class UserController extends AbstractController
         $user->setFirstname($request->getFirstName());
         $user->setLastname($request->getLastName());
         $user->setRoles(['ROLE_USER']);
-        //!hasher le password
-        $user->setPassword($request->getPassword());
+
+        $hashedPassword = $this->passwordHasher->hashPassword(
+            $user,
+            $request->getPassword()
+        );
+
+        $user->setPassword($hashedPassword);
         $user->setCreatedAt(new DateTimeImmutable());
 
         $em->persist($user);
         $em->flush();
 
         return $this->json(['message' => 'User added with success.'], Response::HTTP_CREATED);
+    }
+
+    /**
+     * cleanUserListByRole
+     *
+     * @param  User[] $userList
+     * @return array
+     */
+    private function cleanUserListByRole(array $userList): array
+    {
+        return array_filter($userList, function (User $user) {
+            return $this->validateRoleAuthorization($user);
+        });
+    }
+
+    private function checkQueryParameter(int|string $queryParamName, int|string $value)
+    {
+        if (!is_numeric($value) || $value <= 0 || !ctype_digit((string)$value)) {
+            throw new Exception($queryParamName.' parameter must be positive integer only, '.$queryParamName.' was : '.$value, Response::HTTP_BAD_REQUEST);
+        }
+    }
+
+    private function validateRoleAuthorization(User $user): bool
+    {
+        foreach ($user->getRoles() as $role) {
+            if (!$this->isGranted($role)) {
+                return false;
+            }
+        }
+        return true;
     }
 }

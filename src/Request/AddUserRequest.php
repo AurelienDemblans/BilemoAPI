@@ -56,7 +56,7 @@ class AddUserRequest extends AbstractRequest
         }
 
         if ($this->userRepository->findOneByEmail($this->getEmail()) !== null) {
-            throw new Exception('You are not allowed to perform this request : email already in use by an other user', Response::HTTP_BAD_REQUEST);
+            throw new Exception('Error : email already in use by an other user', Response::HTTP_BAD_REQUEST);
         }
     }
 
