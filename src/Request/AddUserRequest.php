@@ -2,11 +2,28 @@
 
 namespace App\Request;
 
+use App\Entity\Client;
+use App\Repository\ClientRepository;
+use App\Repository\UserRepository;
 use App\Request\AbstractRequest;
 use Exception;
+use Symfony\Bundle\SecurityBundle\Security;
+use Symfony\Component\HttpFoundation\RequestStack;
+use Symfony\Component\HttpFoundation\Response;
 
-class RegisterRequest extends AbstractRequest
+class AddUserRequest extends AbstractRequest
 {
+    private ?Client $client = null;
+
+    public function __construct(
+        private readonly UserRepository $userRepository,
+        private readonly ClientRepository $clientRepository,
+        RequestStack $requestStack,
+        Security $security
+    ) {
+        parent::__construct($requestStack, $security);
+    }
+
     /**
      * isValid
      *
@@ -14,16 +31,32 @@ class RegisterRequest extends AbstractRequest
      */
     public function isValid()
     {
-        if (!preg_match('/^[^\s@]+@[^\s@]+\.[^\s@]+$/', $this->getEmail())) {
-            throw new \Exception('Format d\'email invalide');
-        }
-
         foreach ($this->getMandatoryFields() as $fieldName) {
             if (!$this->requestHas($fieldName)) {
                 throw new Exception('Le champs '.$fieldName. ' est obligatoire');
 
                 $this->checkStringParameter($this->getInRequest($fieldName), $fieldName);
             }
+        }
+
+        if (!preg_match('/^[^\s@]+@[^\s@]+\.[^\s@]+$/', $this->getEmail())) {
+            throw new \Exception('Format d\'email invalide');
+        }
+    }
+
+    /**
+     * isAllowed
+     *
+     * @return void
+     */
+    public function isAllowed()
+    {
+        if ($this->getClient() !== $this->getUser()->getClient() && !$this->userIs('ROLE_SUPER_ADMIN')) {
+            throw new Exception('You are not allowed to perform this request : invalid client', Response::HTTP_BAD_REQUEST);
+        }
+
+        if ($this->userRepository->findOneByEmail($this->getEmail()) !== null) {
+            throw new Exception('Error : email already in use by an other user', Response::HTTP_BAD_REQUEST);
         }
     }
 
@@ -107,7 +140,12 @@ class RegisterRequest extends AbstractRequest
      */
     public function getClient()
     {
-        return $this->getInRequest('client');
+        if (!$this->client) {
+            return  $this->client = $this->clientRepository->findOneByUsername(mb_strtolower($this->getInRequest('client')))
+            ?? throw new Exception('client not found', Response::HTTP_NOT_FOUND);
+        }
+
+        return $this->client;
     }
 
 }
