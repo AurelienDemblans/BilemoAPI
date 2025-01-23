@@ -1,9 +1,11 @@
 <?php
 
-namespace App\Controller;
+namespace App\Controller\Product;
 
+use App\Controller\BilemoController;
 use App\Entity\Product;
 use App\Repository\ProductRepository;
+use Exception;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -13,9 +15,8 @@ use Symfony\Component\Serializer\SerializerInterface;
 use Symfony\Contracts\Cache\ItemInterface;
 use Symfony\Contracts\Cache\TagAwareCacheInterface;
 
-class ProductController extends AbstractController
+class ProductController extends BilemoController
 {
-    //TODO
     #[Route('/api/products', name: 'app_products', methods: Request::METHOD_GET) ]
     public function index(
         ProductRepository $productRepository,
@@ -25,9 +26,20 @@ class ProductController extends AbstractController
     ): JsonResponse {
         $page = $request->get('page', 1);
         $limit = $request->get('limit', 3);
+        //*check queryParams are valid
+        $queryParams = ['page' => $page, 'limit' => $limit];
+        foreach ($queryParams as $queryParamName => $value) {
+            $this->checkQueryParameter($queryParamName, $value);
+        }
 
-        //! renvoyer une erreur si productlist est vide et preciser le nombre de page maximum selon la limit choisis par l'utilisateur
         $productList =  $productRepository->findAllWithPagination($page, $limit);
+        if ($productList === null || empty($productList)) {
+
+            $numberOfProduct = count($productRepository->findAll());
+            $maximumPageNumberAvailable = intval(ceil($numberOfProduct / $limit));
+
+            throw new Exception('This page contains no products. Maximum number of page with '.$limit.' product(s) by page is : '.$maximumPageNumberAvailable, Response::HTTP_NOT_FOUND);
+        }
 
         $jsonProductList = $serializer->serialize($productList, 'json');
 
@@ -35,9 +47,12 @@ class ProductController extends AbstractController
     }
 
     #[Route('/api/products/{id}', name: 'detail_product', methods: ['GET'])]
-    public function getDetailProduct(Product $product): JsonResponse
+    public function getDetailProduct(?Product $product): JsonResponse
     {
-        //! créer un event listener dans le cas ou l'ID de product fournis n'existe pas
+        if ($product === null) {
+            throw new Exception('Product not found.', Response::HTTP_NOT_FOUND);
+        }
+
         return $this->json($product, Response::HTTP_OK, ['accept' => 'json']);
     }
 }
