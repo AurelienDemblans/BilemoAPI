@@ -48,7 +48,7 @@ class RemoveUserRequest extends AbstractRequest
             $this->getUserToRemove();
         }
 
-        if ($this->userToRemove->getClient() !== $this->getUser()->getClient()) {
+        if ($this->userToRemove->getClient() !== $this->getUser()->getClient() && !$this->userIs('ROLE_SUPER_ADMIN')) {
             throw new Exception('You are not allowed to perform this request : invalid client', Response::HTTP_BAD_REQUEST);
 
         }
