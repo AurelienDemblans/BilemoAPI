@@ -1,23 +1,16 @@
 <?php
 
-namespace App\EventSubscriber;
+namespace App\EventListener;
 
-use Symfony\Component\EventDispatcher\EventSubscriberInterface;
+use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Event\ExceptionEvent;
-use Symfony\Component\HttpKernel\Exception\HttpException;
-use Symfony\Component\HttpKernel\KernelEvents;
 
-class ExceptionSubscriber implements EventSubscriberInterface
+#[AsEventListener(event: 'kernel.exception', priority: 100, method: 'OnException')]
+class ExceptionListener
 {
-    public static function getSubscribedEvents(): array
-    {
-        return [
-            KernelEvents::EXCEPTION => 'onKernelException',
-        ];
-    }
-    public function onKernelException(ExceptionEvent $event): void
+    public function OnException(ExceptionEvent $event): void
     {
         $e = $event->getThrowable();
 
