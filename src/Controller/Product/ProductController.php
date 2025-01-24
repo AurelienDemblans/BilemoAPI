@@ -6,14 +6,11 @@ use App\Controller\BilemoController;
 use App\Entity\Product;
 use App\Repository\ProductRepository;
 use Exception;
-use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Serializer\SerializerInterface;
-use Symfony\Contracts\Cache\ItemInterface;
-use Symfony\Contracts\Cache\TagAwareCacheInterface;
 
 class ProductController extends BilemoController
 {
@@ -22,7 +19,6 @@ class ProductController extends BilemoController
         ProductRepository $productRepository,
         SerializerInterface $serializer,
         Request $request,
-        TagAwareCacheInterface $cachePool
     ): JsonResponse {
         $page = $request->get('page', 1);
         $limit = $request->get('limit', 3);
@@ -46,7 +42,7 @@ class ProductController extends BilemoController
         return new JsonResponse($jsonProductList, Response::HTTP_OK, [], true);
     }
 
-    #[Route('/api/products/{id}', name: 'detail_product', methods: ['GET'])]
+    #[Route('/api/products/{id<\d+>}', name: 'detail_product', methods: ['GET'])]
     public function getDetailProduct(?Product $product): JsonResponse
     {
         if ($product === null) {
