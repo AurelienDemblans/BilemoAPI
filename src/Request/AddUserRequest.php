@@ -8,6 +8,7 @@ use App\Repository\UserRepository;
 use App\Request\AbstractRequest;
 use Exception;
 use Symfony\Bundle\SecurityBundle\Security;
+use Symfony\Component\HttpFoundation\InputBag;
 use Symfony\Component\HttpFoundation\RequestStack;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -33,14 +34,14 @@ class AddUserRequest extends AbstractRequest
     {
         foreach ($this->getMandatoryFields() as $fieldName) {
             if (!$this->requestHas($fieldName)) {
-                throw new Exception('Le champs '.$fieldName. ' est obligatoire');
+                throw new Exception('Le champs '.$fieldName. ' est obligatoire', Response::HTTP_BAD_REQUEST);
 
                 $this->checkStringParameter($this->getInRequest($fieldName), $fieldName);
             }
         }
 
         if (!preg_match('/^[^\s@]+@[^\s@]+\.[^\s@]+$/', $this->getEmail())) {
-            throw new \Exception('Format d\'email invalide');
+            throw new \Exception('Format d\'email invalide', Response::HTTP_BAD_REQUEST);
         }
     }
 
@@ -83,13 +84,13 @@ class AddUserRequest extends AbstractRequest
     private function checkStringParameter($parameterValue, $parameterName)
     {
         if (!is_string($parameterValue)) {
-            throw new Exception($parameterName. ' invalide : le champs ne doit être une string');
+            throw new Exception($parameterName. ' invalide : le champs ne doit être une string', Response::HTTP_BAD_REQUEST);
         }
 
         $parameterValue = trim($parameterValue);
 
         if (empty($parameterValue) || $parameterValue === '') {
-            throw new Exception($parameterName. ' invalide : le champs ne doit pas être vide');
+            throw new Exception($parameterName. ' invalide : le champs ne doit pas être vide', Response::HTTP_BAD_REQUEST);
         }
     }
 
