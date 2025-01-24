@@ -8,9 +8,11 @@ use Symfony\Component\Serializer\Annotation\Groups;
 use Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface;
 use Symfony\Component\Security\Core\User\UserInterface;
 use Symfony\Component\Validator\Constraints as Assert;
+use Symfony\Bridge\Doctrine\Validator\Constraints\UniqueEntity;
 
 #[ORM\Entity(repositoryClass: UserRepository::class)]
 #[ORM\UniqueConstraint(name: 'UNIQ_IDENTIFIER_EMAIL', fields: ['email'])]
+#[UniqueEntity('email')]
 class User implements UserInterface, PasswordAuthenticatedUserInterface
 {
     #[ORM\Id]
@@ -19,22 +21,31 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     #[Groups(["getUser"])]
     private ?int $id = null;
 
-    #[ORM\Column(length: 180)]
     #[Groups(["getUser"])]
+    #[ORM\Column(type: 'string', length: 255, unique: true)]
+    #[Assert\NotBlank(message: "Email is mandatory")]
+    #[Assert\Email(message: 'The email {{ value }} is not a valid email.')]
+    #[Assert\Length(min: 5, max: 255, minMessage: "Email must be at least {{ limit }} caracters", maxMessage: "Email maximum length is {{ limit }} caracters")]
     private ?string $email = null;
 
     #[ORM\Column(length: 255)]
     #[Groups(["getUser"])]
+    #[Assert\NotBlank(message: "Email is mandatory")]
+    #[Assert\Length(min: 1, max: 255, minMessage: "firstname must be at least {{ limit }} caracters", maxMessage: "firstname maximum length is {{ limit }} caracters")]
     private ?string $firstname = null;
 
     #[ORM\Column(length: 255)]
     #[Groups(["getUser"])]
+    #[Assert\NotBlank(message: "Email is mandatory")]
+    #[Assert\Length(min: 1, max: 255, minMessage: "firstname must be at least {{ limit }} caracters", maxMessage: "firstname maximum length is {{ limit }} caracters")]
     private ?string $lastname = null;
 
     /**
      * @var list<string> The user roles
      */
     #[ORM\Column]
+    #[Assert\NotBlank(message: "Role is mandatory")]
+    // #[Assert\Choice(choices: '%roles%', message: 'Choose a valid role.')]
     private array $roles = [];
 
     /**
@@ -45,6 +56,8 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     private ?string $password = null;
 
     #[ORM\Column]
+    #[Assert\Type(\DateTimeImmutable::class, message: 'La valeur doit être un objet DateTimeImmutable')]
+    #[Assert\NotNull(message: 'La date de création ne peut pas être nulle')]
     #[Groups(["getUser"])]
     private ?\DateTimeImmutable $createdAt = null;
 
@@ -126,8 +139,6 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     public function getRoles(): array
     {
         $roles = $this->roles;
-        // guarantee every user at least has ROLE_USER
-        $roles[] = 'ROLE_CLIENT';
 
         return array_unique($roles);
     }

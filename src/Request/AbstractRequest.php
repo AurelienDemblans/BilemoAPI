@@ -30,7 +30,6 @@ abstract class AbstractRequest
 
     /**
      * @param RequestStack $requestStack
-     * @param RightChecker $rightChecker
      * @param Security     $security
      */
     public function __construct(

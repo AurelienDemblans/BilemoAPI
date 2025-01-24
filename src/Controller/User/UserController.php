@@ -10,7 +10,6 @@ use App\Request\RemoveUserRequest;
 use App\Repository\ClientRepository;
 use App\Request\AddUserRequest;
 use App\Service\Factory\UserFactory;
-use DateTimeImmutable;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Contracts\Cache\ItemInterface;
 use Symfony\Component\HttpFoundation\Request;
@@ -20,8 +19,8 @@ use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Contracts\Cache\TagAwareCacheInterface;
 use Symfony\Component\Serializer\SerializerInterface;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
-use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
+use Symfony\Component\Validator\Validator\ValidatorInterface;
 
 class UserController extends BilemoController
 {
@@ -30,6 +29,7 @@ class UserController extends BilemoController
         private readonly SerializerInterface $serializer,
         private readonly TagAwareCacheInterface $cachePool,
         private readonly UserPasswordHasherInterface $passwordHasher,
+        private readonly EntityManagerInterface $em,
     ) {
     }
 
@@ -98,31 +98,29 @@ class UserController extends BilemoController
     #[Route('/api/users/{userId<\d+>}', name: 'client_users_detail', methods: Request::METHOD_GET)]
     public function getDetailUser(
         UserRepository $userRepository,
-        SerializerInterface $serializer,
         int $userId,
     ): JsonResponse {
         /** @var User $user */
         $user = $this->getUser();
-        $client = $user->getClient();
+        /** @var User $userToReturn */
+        $userToReturn = $userRepository->find($userId);
+        if ($userToReturn === null) {
+            throw new Exception('User not found', Response::HTTP_NOT_FOUND);
+        }
 
-        if ($user->getClient() !== $client && !$this->isGranted('ROLE_SUPER_ADMIN')) {
+        if ($user->getClient() !== $userToReturn->getClient() && !$this->isGranted('ROLE_SUPER_ADMIN')) {
             throw new Exception('You are not allowed to perform this request', Response::HTTP_FORBIDDEN);
         }
 
         $idCache = "getDetailUsers-". $userId;
 
+        $serializer = $this->serializer;
         $jsonUser = $this->cachePool->get($idCache, function (ItemInterface $item) use (
-            $userRepository,
             $serializer,
-            $userId,
+            $userToReturn,
         ) {
             $item->tag("UsersCache");
             $item->expiresAfter(1);
-            /** @var User $userToReturn */
-            $userToReturn = $userRepository->find($userId);
-            if ($userToReturn === null) {
-                throw new Exception('User not found', Response::HTTP_NOT_FOUND);
-            }
 
             if (!$this->validateRoleAuthorization($userToReturn)) {
                 throw new Exception('You are not allowed to perform this request.', Response::HTTP_FORBIDDEN);
@@ -134,43 +132,48 @@ class UserController extends BilemoController
         return new JsonResponse($jsonUser, Response::HTTP_OK, ['accept' => 'json'], true);
     }
 
-    #[Route('/api/users/remove', name: 'remove_user', methods: Request::METHOD_DELETE)]
+    #[Route('/api/users', name: 'remove_user', methods: Request::METHOD_DELETE)]
     #[IsGranted('ROLE_ADMIN')]
     public function removeUser(
         RemoveUserRequest $request,
-        EntityManagerInterface $em,
-        TagAwareCacheInterface $cachePool
     ): JsonResponse {
-        $cachePool->invalidateTags(["UsersCache"]);
+        $this->cachePool->invalidateTags(["UsersCache"]);
 
         $request->isValid();
         $request->isAllowed();
 
-        $em->remove($request->getUserToRemove());
-        $em->flush();
+        $this->em->remove($request->getUserToRemove());
+        $this->em->flush();
 
-        return new JsonResponse(['message' => 'User removed.'], Response::HTTP_NO_CONTENT);
+        return new JsonResponse(null, Response::HTTP_NO_CONTENT);
     }
 
-    #[Route('/api/users/add', name: 'add_user', methods: Request::METHOD_POST)]
+    #[Route('/api/users', name: 'add_user', methods: Request::METHOD_POST)]
     #[IsGranted('ROLE_ADMIN')]
     public function addUser(
         AddUserRequest $request,
-        EntityManagerInterface $em,
-        TagAwareCacheInterface $cachePool,
         UserFactory $userFactory,
+        ValidatorInterface $validator,
     ): JsonResponse {
-        $cachePool->invalidateTags(["UsersCache"]);
+        $this->cachePool->invalidateTags(["UsersCache"]);
 
         $request->isValid();
         $request->isAllowed();
 
         $user = $userFactory->createUser($request);
 
-        $em->persist($user);
-        $em->flush();
+        $errors = $validator->validate($user);
 
-        return $this->json(['message' => 'User added with success.'], Response::HTTP_CREATED);
+        if ($errors->count() > 0) {
+            return new JsonResponse($this->serializer->serialize($errors, 'json'), JsonResponse::HTTP_BAD_REQUEST, [], true);
+        }
+
+        $this->em->persist($user);
+        $this->em->flush();
+
+        $jsonUser = $this->serializer->serialize($user, 'json', ['groups' => 'getUser']);
+
+        return new JsonResponse($jsonUser, Response::HTTP_CREATED, [], true);
     }
 
 
