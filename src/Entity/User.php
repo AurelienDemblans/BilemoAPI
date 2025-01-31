@@ -45,7 +45,6 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
      */
     #[ORM\Column]
     #[Assert\NotBlank(message: "Role is mandatory")]
-    // #[Assert\Choice(choices: '%roles%', message: 'Choose a valid role.')]
     private array $roles = [];
 
     /**
@@ -64,6 +63,8 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     #[ORM\ManyToOne(inversedBy: 'users')]
     #[ORM\JoinColumn(nullable: false)]
     #[Groups(["getUser"])]
+    #[Assert\Valid]
+    #[Assert\NotNull]
     private ?Client $client = null;
 
     public function getId(): ?int
