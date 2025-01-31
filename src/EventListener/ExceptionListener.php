@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Service\EventListener;
+namespace App\EventListener;
 
 use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -14,15 +14,23 @@ class ExceptionListener
     {
         $e = $event->getThrowable();
 
-        if ($e->getCode() === Response::HTTP_FORBIDDEN) {
-            $errorMessage = 'You are not allowed to perform this request.';
+        if (!array_key_exists($e->getCode(), Response::$statusTexts)) {
+            $errorCode = Response::HTTP_BAD_REQUEST;
+        } else {
+            $errorCode =  $e->getCode() ;
+        }
+
+
+        if ($e->getCode() === Response::HTTP_INTERNAL_SERVER_ERROR) {
+            $errorMessage = $e->getMessage(). ' Please try again later or contact the dev team.';
         } else {
             $errorMessage = $e->getMessage();
         }
 
         $response = new JsonResponse(
-            ['message' => $errorMessage],
-            $e->getCode() != 0 ? $e->getCode() : Response::HTTP_BAD_REQUEST
+            ['message' => $errorMessage,
+            'status' => $errorCode],
+            $errorCode
         );
 
         $event->setResponse($response);
