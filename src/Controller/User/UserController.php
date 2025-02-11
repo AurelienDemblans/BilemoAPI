@@ -2,6 +2,7 @@
 
 namespace App\Controller\User;
 
+use App\Attribute\Api\Interface\UserInterface;
 use App\Controller\BilemoController;
 use Exception;
 use App\Entity\User;
@@ -11,6 +12,11 @@ use App\Repository\ClientRepository;
 use App\Request\AddUserRequest;
 use App\Service\Factory\UserFactory;
 use Doctrine\ORM\EntityManagerInterface;
+use Nelmio\ApiDocBundle\Attribute\Model;
+use OpenApi\Attributes\Items;
+use OpenApi\Attributes\JsonContent;
+use OpenApi\Attributes\Property;
+use OpenApi\Attributes\QueryParameter;
 use Symfony\Contracts\Cache\ItemInterface;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -21,6 +27,8 @@ use Symfony\Component\Serializer\SerializerInterface;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 use Symfony\Component\Validator\Validator\ValidatorInterface;
+use OpenApi\Attributes\Response as AttributesResponse;
+use OpenApi\Attributes\Tag;
 
 class UserController extends BilemoController
 {
@@ -34,6 +42,55 @@ class UserController extends BilemoController
     }
 
     #[Route('/api/users', name: 'client_users', methods: Request::METHOD_GET) ]
+    #[Tag('Users'),
+        AttributesResponse(
+            response: Response::HTTP_OK,
+            description: 'Return all user of a specific client (3 per page)',
+            content:new JsonContent(
+                type: 'array',
+                items: new Items(
+                    ref: new Model(type: UserInterface::class)
+                )
+            )
+        ),
+        AttributesResponse(
+            response: Response::HTTP_FORBIDDEN,
+            description: 'when user is not allowed',
+            content:new JsonContent(
+                properties: [
+                    new Property(property: 'status', type: 'integer', example:Response::HTTP_FORBIDDEN, nullable:false),
+                    new Property(property: 'message', example:'You are not allowed to perform this request')
+                ]
+            )
+        ),
+        AttributesResponse(
+            response: Response::HTTP_NOT_FOUND,
+            description: "an HTTP 400 is throw when : 
+            <ul>
+                <li> no user is found </li>
+                <li> No user available to display according to your role </li>
+                <li> if the pagination doest not suit the number of users </li>
+            </ul>",
+            content:new JsonContent(
+                properties: [
+                    new Property(property: 'status', type: 'integer', example:Response::HTTP_NOT_FOUND, nullable:false),
+                    new Property(property: 'message', example:'Users not found.')
+                ]
+            )
+        ),
+        QueryParameter(
+            name:'page',
+            description:'page you want to get, default = 1'
+        ),
+        QueryParameter(
+            name:'limit',
+            description:'number of users by page, default = 3'
+        ),
+        QueryParameter(
+            name:'clientId',
+            description:'for SUPER_ADMIN only'
+        )
+    ]
     public function index(
         UserRepository $userRepository,
         SerializerInterface $serializer,
@@ -51,8 +108,7 @@ class UserController extends BilemoController
         foreach ($queryParams as $queryParamName => $value) {
             $this->checkQueryParameter($queryParamName, $value);
         }
-
-        if ($user->getClient()->getId() !== $clientId && !$this->isGranted('ROLE_SUPER_ADMIN')) {
+        if ((int) $user->getClient()->getId() !== (int) $clientId && !$this->isGranted('ROLE_SUPER_ADMIN')) {
             throw new Exception('You are not allowed to perform this request', Response::HTTP_FORBIDDEN);
         }
 
@@ -76,7 +132,7 @@ class UserController extends BilemoController
             $totalUser = $userRepository->findBy(['client' => $clientId]);
             $cleanedTotalNumber = $this->cleanUserListByRole($totalUser);
             if (null === $cleanedTotalNumber || empty($cleanedTotalNumber)) {
-                throw new Exception('No user available for this client', Response::HTTP_NOT_FOUND);
+                throw new Exception('No user available to display according to your role', Response::HTTP_NOT_FOUND);
             }
 
             $userList = $userRepository->findAllWithPagination($page, $limit, $clientId);
