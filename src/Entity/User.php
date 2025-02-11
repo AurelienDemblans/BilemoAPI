@@ -4,15 +4,37 @@ namespace App\Entity;
 
 use App\Repository\UserRepository;
 use Doctrine\ORM\Mapping as ORM;
-use Symfony\Component\Serializer\Annotation\Groups;
+use JMS\Serializer\Annotation\Groups;
 use Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface;
 use Symfony\Component\Security\Core\User\UserInterface;
 use Symfony\Component\Validator\Constraints as Assert;
 use Symfony\Bridge\Doctrine\Validator\Constraints\UniqueEntity;
+use Hateoas\Configuration\Annotation as Hateoas;
+use Hateoas\Configuration\Annotation\Relation;
+use Hateoas\Configuration\Annotation\Route;
 
 #[ORM\Entity(repositoryClass: UserRepository::class)]
 #[ORM\UniqueConstraint(name: 'UNIQ_IDENTIFIER_EMAIL', fields: ['email'])]
 #[UniqueEntity('email')]
+#[Hateoas\Relation(
+    'self',
+    href: 'expr(service("router").generate("user_detail", {"userId": object.getId()}))',
+    exclusion: new Hateoas\Exclusion(groups: ["getUser"])
+)]
+#[Hateoas\Relation(
+    'delete',
+    href: 'expr(service("router").generate("remove_user"))',
+    exclusion: new Hateoas\Exclusion(
+        groups: ["getUser"],
+        excludeIf: "expr(not is_granted('ROLE_ADMIN'))",
+    ),
+    attributes: [
+        "method" => "DELETE",
+        "required_body" => [
+            "user" => "integer"
+        ]
+    ]
+)]
 class User implements UserInterface, PasswordAuthenticatedUserInterface
 {
     #[ORM\Id]

@@ -14,6 +14,9 @@ use App\Repository\ClientRepository;
 use App\Request\AddUserRequest;
 use App\Service\Factory\UserFactory;
 use Doctrine\ORM\EntityManagerInterface;
+use JMS\Serializer\Context;
+use JMS\Serializer\SerializationContext;
+use JMS\Serializer\SerializerInterface;
 use Nelmio\ApiDocBundle\Attribute\Model;
 use OpenApi\Attributes\Items;
 use OpenApi\Attributes\JsonContent;
@@ -26,7 +29,6 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Contracts\Cache\TagAwareCacheInterface;
-use Symfony\Component\Serializer\SerializerInterface;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 use Symfony\Component\Validator\Validator\ValidatorInterface;
@@ -35,6 +37,8 @@ use OpenApi\Attributes\Tag;
 
 class UserController extends BilemoController
 {
+    private ?Context $context = null;
+
     public function __construct(
         private readonly ClientRepository $clientRepository,
         private readonly SerializerInterface $serializer,
@@ -42,6 +46,7 @@ class UserController extends BilemoController
         private readonly UserPasswordHasherInterface $passwordHasher,
         private readonly EntityManagerInterface $em,
     ) {
+        $this->context = SerializationContext::create()->setGroups(['getUser']);
     }
 
     #[Route('/api/users', name: 'client_users', methods: Request::METHOD_GET) ]
@@ -148,13 +153,13 @@ class UserController extends BilemoController
                 throw new Exception('This page contains no users. Maximum number of page with '.$limit.' user(s) by page is : '.$maximumUserNumberAvailable, Response::HTTP_NOT_FOUND);
             }
 
-            return $serializer->serialize($cleanedUserList, 'json', ['groups' => 'getUser']);
+            return $serializer->serialize($cleanedUserList, 'json', $this->context);
         });
 
         return new JsonResponse($jsonUserList, Response::HTTP_OK, [], true);
     }
 
-    #[Route('/api/users/{userId<\d+>}', name: 'client_users_detail', methods: Request::METHOD_GET)]
+    #[Route('/api/users/{userId<\d+>}', name: 'user_detail', methods: Request::METHOD_GET)]
     #[Tag('Users'),
         AttributesResponse(
             response: Response::HTTP_OK,
@@ -214,7 +219,7 @@ class UserController extends BilemoController
                 throw new Exception('You are not allowed to perform this request.', Response::HTTP_FORBIDDEN);
             }
 
-            return $serializer->serialize($userToReturn, 'json', ['groups' => 'getUser']);
+            return $serializer->serialize($userToReturn, 'json', $this->context);
         });
 
         return new JsonResponse($jsonUser, Response::HTTP_OK, ['accept' => 'json'], true);
@@ -349,7 +354,7 @@ class UserController extends BilemoController
         $this->em->persist($user);
         $this->em->flush();
 
-        $jsonUser = $this->serializer->serialize($user, 'json', ['groups' => 'getUser']);
+        $jsonUser = $this->serializer->serialize($user, 'json', $this->context);
 
         return new JsonResponse($jsonUser, Response::HTTP_CREATED, [], true);
     }
